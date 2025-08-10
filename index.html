@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Cat Catcher Game 🐾</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Comic Sans MS', cursive, sans-serif;
+      background: #f9e7fd;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      color: #b368c2;
+      margin-top: 24px;
+      text-shadow: 1px 1px 0 #fff;
+    }
+    #game-area {
+      position: relative;
+      width: 320px;
+      height: 480px;
+      background: #ffe8f3;
+      border: 3px solid #b368c2;
+      border-radius: 20px;
+      margin-top: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(180,104,194,0.1);
+    }
+    #basket {
+      position: absolute;
+      width: 80px;
+      height: 40px;
+      bottom: 10px;
+      left: 120px;
+      background: #fff3b8;
+      border-radius: 20px 20px 30px 30px;
+      border: 2px solid #b368c2;
+      text-align: center;
+      font-size: 32px;
+      line-height: 40px;
+      box-shadow: 0 2px 8px rgba(180,104,194,0.12);
+      user-select: none;
+    }
+    .cat {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      font-size: 32px;
+      text-align: center;
+      line-height: 40px;
+      pointer-events: none;
+      transition: filter 0.2s;
+    }
+    #scoreboard {
+      margin-top: 12px;
+      font-size: 20px;
+      color: #a250b7;
+    }
+    #start-btn {
+      margin-top: 18px;
+      padding: 10px 24px;
+      font-size: 18px;
+      background: #b368c2;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(180,104,194,0.09);
+      transition: background 0.2s;
+    }
+    #start-btn:hover {
+      background: #a250b7;
+    }
+    #game-over {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: rgba(249,231,253,0.95);
+      top: 0;
+      left: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      color: #b368c2;
+      z-index: 99;
+      border-radius: 20px;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.4s;
+    }
+    #game-over.visible {
+      visibility: visible;
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <h1>Cat Catcher 🐾</h1>
+  <div id="scoreboard">Score: 0</div>
+  <button id="start-btn">Start Game</button>
+  <div id="game-area">
+    <div id="basket">🧺</div>
+    <div id="game-over">
+      <div id="game-over-text"></div>
+      <button id="restart-btn">Play Again</button>
+    </div>
+  </div>
+  <script>
+    const gameArea = document.getElementById('game-area');
+    const basket = document.getElementById('basket');
+    const scoreboard = document.getElementById('scoreboard');
+    const startBtn = document.getElementById('start-btn');
+    const gameOverScreen = document.getElementById('game-over');
+    const gameOverText = document.getElementById('game-over-text');
+    const restartBtn = document.getElementById('restart-btn');
+
+    let basketX = 120;
+    let score = 0;
+    let cats = [];
+    let gameInterval = null;
+    let catInterval = null;
+    let gameActive = false;
+    let speed = 2;
+    let lives = 3;
+
+    const catEmojis = ["😺", "😸", "😻", "😽", "😹", "😼"];
+    function updateBasket() {
+      basket.style.left = basketX + 'px';
+    }
+
+    function spawnCat() {
+      const cat = document.createElement('div');
+      cat.className = 'cat';
+      cat.textContent = catEmojis[Math.floor(Math.random()*catEmojis.length)];
+      let catX = Math.random() * (gameArea.offsetWidth - 40);
+      cat.style.left = catX + 'px';
+      cat.style.top = '0px';
+      cat.dataset.x = catX;
+      cat.dataset.y = 0;
+      gameArea.appendChild(cat);
+      cats.push(cat);
+    }
+
+    function moveCats() {
+      for (let i = cats.length-1; i >= 0; i--) {
+        let cat = cats[i];
+        let y = parseFloat(cat.dataset.y) + speed;
+        cat.dataset.y = y;
+        cat.style.top = y + 'px';
+
+        // Check catch
+        let basketRect = basket.getBoundingClientRect();
+        let catRect = cat.getBoundingClientRect();
+        let gameRect = gameArea.getBoundingClientRect();
+
+        if (
+          y + 40 >= gameArea.offsetHeight - 10 &&
+          catRect.left < basketRect.right &&
+          catRect.right > basketRect.left
+        ) {
+          cat.style.filter = 'brightness(1.4)';
+          score += 1;
+          scoreboard.textContent = `Score: ${score} 🐱 Lives: ${lives}`;
+          cat.remove();
+          cats.splice(i, 1);
+          continue;
+        }
+
+        // Missed
+        if (y > gameArea.offsetHeight) {
+          cat.remove();
+          cats.splice(i, 1);
+          lives -= 1;
+          scoreboard.textContent = `Score: ${score} 🐱 Lives: ${lives}`;
+          if (lives <= 0) {
+            endGame();
+          }
+        }
+      }
+    }
+
+    function gameLoop() {
+      moveCats();
+    }
+
+    function startGame() {
+      score = 0;
+      lives = 3;
+      speed = 2;
+      scoreboard.textContent = `Score: 0 🐱 Lives: 3`;
+      basketX = 120;
+      updateBasket();
+      cats.forEach(cat => cat.remove());
+      cats = [];
+      gameActive = true;
+      gameOverScreen.classList.remove('visible');
+      startBtn.style.display = 'none';
+
+      gameInterval = setInterval(gameLoop, 18);
+      catInterval = setInterval(() => {
+        spawnCat();
+        // Increase difficulty
+        if (score > 0 && score % 10 === 0) {
+          speed += 0.5;
+        }
+      }, 900);
+    }
+
+    function endGame() {
+      clearInterval(gameInterval);
+      clearInterval(catInterval);
+      gameActive = false;
+      gameOverText.innerHTML = `Game Over!<br>Final Score: <b>${score}</b>`;
+      gameOverScreen.classList.add('visible');
+      startBtn.style.display = '';
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (!gameActive) return;
+      if (e.key === 'ArrowLeft') {
+        basketX = Math.max(0, basketX - 24);
+        updateBasket();
+      }
+      if (e.key === 'ArrowRight') {
+        basketX = Math.min(gameArea.offsetWidth - basket.offsetWidth, basketX + 24);
+        updateBasket();
+      }
+    });
+
+    gameArea.addEventListener('mousemove', (e) => {
+      if (!gameActive) return;
+      const rect = gameArea.getBoundingClientRect();
+      let x = e.clientX - rect.left - basket.offsetWidth/2;
+      basketX = Math.max(0, Math.min(gameArea.offsetWidth - basket.offsetWidth, x));
+      updateBasket();
+    });
+
+    startBtn.onclick = startGame;
+    restartBtn.onclick = startGame;
+  </script>
+</body>
+</html>
